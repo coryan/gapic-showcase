@@ -119,6 +119,7 @@ func AllScenarios() []Scenario {
 	all = append(all, queryAggregationScenarios()...)
 	all = append(all, queryExplainScenarios()...)
 	all = append(all, retryScenarios()...)
+	all = append(all, txLifecycleScenarios()...)
 	return all
 }
 
