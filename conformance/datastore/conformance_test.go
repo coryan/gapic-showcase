@@ -32,6 +32,7 @@ var knownGoDivergences = []string{
 	"LookupExposesEntityMetadata",
 	"MutationExposesMutationResultMetadata",
 	"QueryProjectionKeylessEntity",
+	"RetryNoRetryBeginTransactionDeadlineExceeded",
 	// knownGoDivergencesEnd
 }
 
