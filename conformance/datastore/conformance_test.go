@@ -30,6 +30,7 @@ import (
 // is known to diverge from the Cloud Datastore Client Library Specification.
 var knownGoDivergences = []string{
 	"LookupExposesEntityMetadata",
+	"MutationExposesMutationResultMetadata",
 	// knownGoDivergencesEnd
 }
 
