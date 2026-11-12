@@ -29,6 +29,7 @@ import (
 // knownGoDivergences lists conformance scenarios where cloud.google.com/go/datastore v1.28.1
 // is known to diverge from the Cloud Datastore Client Library Specification.
 var knownGoDivergences = []string{
+	"LookupExposesEntityMetadata",
 	// knownGoDivergencesEnd
 }
 
