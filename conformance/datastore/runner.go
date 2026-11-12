@@ -117,6 +117,7 @@ func AllScenarios() []Scenario {
 	all = append(all, queryProjectionScenarios()...)
 	all = append(all, queryPaginationScenarios()...)
 	all = append(all, queryAggregationScenarios()...)
+	all = append(all, queryExplainScenarios()...)
 	return all
 }
 
