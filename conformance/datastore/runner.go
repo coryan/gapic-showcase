@@ -106,6 +106,7 @@ type SuiteConfig struct {
 // AllScenarios returns all registered conformance scenarios in deterministic order.
 func AllScenarios() []Scenario {
 	var all []Scenario
+	all = append(all, headerRoutingScenarios()...)
 	return all
 }
 
