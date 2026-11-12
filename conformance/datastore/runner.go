@@ -110,6 +110,7 @@ func AllScenarios() []Scenario {
 	all = append(all, headerNamespaceScenarios()...)
 	all = append(all, keyIDScenarios()...)
 	all = append(all, lookupCoreScenarios()...)
+	all = append(all, lookupOptionScenarios()...)
 	return all
 }
 
