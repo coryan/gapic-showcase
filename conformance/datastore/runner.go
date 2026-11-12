@@ -95,6 +95,7 @@ type SuiteReport struct {
 // SuiteConfig configures a conformance suite run.
 type SuiteConfig struct {
 	FixtureAddr string
+	FixtureCmd  string
 	Transports  []fixturepb.Transport
 	RunPattern  string
 	SkipPattern string
@@ -131,8 +132,20 @@ func RunSuite(ctx context.Context, cfg SuiteConfig) (*SuiteReport, error) {
 	}
 
 	addr := cfg.FixtureAddr
-	if addr == "" {
-		return nil, errors.New("--fixture-addr must be specified")
+	if addr == "" && cfg.FixtureCmd == "" {
+		return nil, errors.New("either --fixture-addr or --fixture-cmd must be specified")
+	}
+	if addr != "" && cfg.FixtureCmd != "" {
+		return nil, errors.New("cannot specify both --fixture-addr and --fixture-cmd")
+	}
+
+	if cfg.FixtureCmd != "" {
+		launchedAddr, stopCmd, err := launchFixtureCmd(ctx, cfg.FixtureCmd)
+		if err != nil {
+			return nil, err
+		}
+		defer stopCmd()
+		addr = launchedAddr
 	}
 
 	conn, err := grpc.NewClient(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
