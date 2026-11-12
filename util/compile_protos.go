@@ -119,5 +119,45 @@ func CompileProtos(version string) {
 	Execute("rm", "-f", "cmd/gapic-showcase/paged-expand-legacy.go")
 
 	// Format generated output
+	CompileConformanceProtos()
 	Execute("go", "fmt", "./...")
+}
+
+// CompileConformanceProtos regenerates Go protobuf and gRPC bindings for the
+// standalone conformance fixture schemas without requiring schema/googleapis.
+func CompileConformanceProtos() {
+	if err := exec.Command("protoc", "--version").Run(); err != nil {
+		log.Fatal("Error: 'protoc' is expected to be installed on the path.")
+	}
+
+	pwd, err := os.Getwd()
+	if err != nil {
+		log.Fatalf("Error: unable to get working dir: %+v", err)
+	}
+
+	outDir, err := os.MkdirTemp(os.TempDir(), "gapic-showcase-conformance")
+	if err != nil {
+		log.Fatalf("Error: unable to create a temporary dir: %+v\n", err)
+	}
+	defer os.RemoveAll(outDir)
+
+	protos := filepath.Join("schema", "google", "showcase", "conformance", "datastore", "v1", "*.proto")
+	files, err := filepath.Glob(protos)
+	if err != nil || len(files) == 0 {
+		log.Fatalf("Error: failed to find protos in %s", protos)
+	}
+
+	command := []string{
+		"protoc",
+		"--experimental_allow_proto3_optional",
+		"--proto_path=schema",
+		"--go_out=" + outDir,
+		"--go-grpc_out=" + outDir,
+		"--go-grpc_opt=require_unimplemented_servers=false",
+	}
+	Execute(append(command, files...)...)
+
+	tempConformance := filepath.Join(outDir, "github.com", "googleapis", "gapic-showcase", "conformance")
+	Execute("cp", "-r", tempConformance, pwd)
+	Execute("go", "fmt", "./conformance/...")
 }

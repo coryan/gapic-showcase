@@ -1,0 +1,621 @@
+// Copyright 2026 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package google.showcase.conformance.datastore.v1;
+
+import "google/protobuf/duration.proto";
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+
+option csharp_namespace = "Google.Showcase.Conformance.Datastore.V1";
+option go_package = "github.com/googleapis/gapic-showcase/conformance/datastore/v1/fixturepb;fixturepb";
+option java_multiple_files = true;
+option java_package = "com.google.showcase.conformance.datastore.v1";
+option ruby_package = "Google::Showcase::Conformance::Datastore::V1";
+
+// DatastoreFixture defines the language-agnostic RPC contract between the
+// veneer conformance runner and a language-specific Datastore client fixture
+// (test proxy). Every method is unary; streaming/callback semantics are encoded
+// declaratively in requests so fixtures in any language remain simple.
+service DatastoreFixture {
+  rpc CreateClient(CreateClientRequest) returns (CreateClientResponse);
+  rpc CloseClient(CloseClientRequest) returns (CloseClientResponse);
+
+  rpc AllocateIds(AllocateIdsFixtureRequest) returns (AllocateIdsFixtureResponse);
+  rpc ReserveIds(ReserveIdsFixtureRequest) returns (ReserveIdsFixtureResponse);
+
+  rpc Get(GetFixtureRequest) returns (GetFixtureResponse);
+  rpc GetMulti(GetMultiFixtureRequest) returns (GetMultiFixtureResponse);
+
+  rpc Put(PutFixtureRequest) returns (PutFixtureResponse);
+  rpc Insert(InsertFixtureRequest) returns (InsertFixtureResponse);
+  rpc Update(UpdateFixtureRequest) returns (UpdateFixtureResponse);
+  rpc Delete(DeleteFixtureRequest) returns (DeleteFixtureResponse);
+  rpc Mutate(MutateFixtureRequest) returns (MutateFixtureResponse);
+
+  rpc RunQuery(RunQueryFixtureRequest) returns (RunQueryFixtureResponse);
+  rpc RunAggregationQuery(RunAggregationQueryFixtureRequest)
+      returns (RunAggregationQueryFixtureResponse);
+  rpc RunInTransaction(RunInTransactionFixtureRequest)
+      returns (RunInTransactionFixtureResponse);
+}
+
+// Transport identifies the underlying wire protocol configured on the veneer client.
+enum Transport {
+  TRANSPORT_UNSPECIFIED = 0;
+  TRANSPORT_GRPC = 1;
+  TRANSPORT_HTTP_JSON = 2;
+}
+
+// ErrorKind normalizes idiomatic language errors into harness categories.
+enum ErrorKind {
+  ERROR_KIND_UNSPECIFIED = 0;
+  // Error originating from the server or transport (HTTP/gRPC status error).
+  ERROR_KIND_SERVICE = 1;
+  // Precondition/input validation rejected locally before sending an RPC.
+  ERROR_KIND_CLIENT_VALIDATION = 2;
+  // Invalid lifecycle/iterator/transaction state call (e.g., premature ExplainMetrics).
+  ERROR_KIND_CLIENT_STATE = 3;
+  // Application callback error propagated out of RunInTransaction.
+  ERROR_KIND_CALLBACK = 4;
+  // Local/client deadline cancellation or timeout.
+  ERROR_KIND_TIMEOUT = 5;
+  // Feature, option, or transport not implemented by this language veneer/fixture.
+  ERROR_KIND_FEATURE_NOT_IMPLEMENTED = 6;
+}
+
+// RpcCode mirrors canonical google.rpc.Code numeric values without external imports.
+enum RpcCode {
+  RPC_CODE_OK = 0;
+  RPC_CODE_CANCELLED = 1;
+  RPC_CODE_UNKNOWN = 2;
+  RPC_CODE_INVALID_ARGUMENT = 3;
+  RPC_CODE_DEADLINE_EXCEEDED = 4;
+  RPC_CODE_NOT_FOUND = 5;
+  RPC_CODE_ALREADY_EXISTS = 6;
+  RPC_CODE_PERMISSION_DENIED = 7;
+  RPC_CODE_RESOURCE_EXHAUSTED = 8;
+  RPC_CODE_FAILED_PRECONDITION = 9;
+  RPC_CODE_ABORTED = 10;
+  RPC_CODE_OUT_OF_RANGE = 11;
+  RPC_CODE_UNIMPLEMENTED = 12;
+  RPC_CODE_INTERNAL = 13;
+  RPC_CODE_UNAVAILABLE = 14;
+  RPC_CODE_DATA_LOSS = 15;
+  RPC_CODE_UNAUTHENTICATED = 16;
+}
+
+message ErrorInfoSpec {
+  string reason = 1;
+  string domain = 2;
+  map<string, string> metadata = 3;
+}
+
+message VeneerError {
+  ErrorKind kind = 1;
+  optional RpcCode rpc_code = 2;
+  optional int32 http_status = 3;
+  ErrorInfoSpec error_info = 4;
+  // Diagnostic only; never asserted identically across languages.
+  string message = 5;
+}
+
+message PartitionSpec {
+  string project_id = 1;
+  string database_id = 2;
+  string namespace_id = 3;
+}
+
+message PathElementSpec {
+  string kind = 1;
+  oneof id_type {
+    int64 id = 2;
+    string name = 3;
+  }
+}
+
+message KeySpec {
+  PartitionSpec partition_id = 1;
+  repeated PathElementSpec path = 2;
+}
+
+message LatLngSpec {
+  double latitude = 1;
+  double longitude = 2;
+}
+
+message VectorSpec {
+  repeated double elements = 1;
+}
+
+message ArraySpec {
+  repeated ValueSpec values = 1;
+}
+
+message ValueSpec {
+  bool exclude_from_indexes = 1;
+  int32 meaning = 2;
+  oneof value_type {
+    bool is_null = 3;
+    bool boolean_value = 4;
+    int64 integer_value = 5;
+    double double_value = 6;
+    google.protobuf.Timestamp timestamp_value = 7;
+    KeySpec key_value = 8;
+    string string_value = 9;
+    bytes blob_value = 10;
+    LatLngSpec geo_point_value = 11;
+    EntitySpec entity_value = 12;
+    ArraySpec array_value = 13;
+    VectorSpec vector_value = 14;
+  }
+}
+
+message EntitySpec {
+  KeySpec key = 1;
+  map<string, ValueSpec> properties = 2;
+}
+
+message EntityMetadata {
+  int64 version = 1;
+  google.protobuf.Timestamp create_time = 2;
+  google.protobuf.Timestamp update_time = 3;
+}
+
+message FoundEntity {
+  // Missing point-read entities MUST normalize to found = false rather than an error.
+  bool found = 1;
+  EntitySpec entity = 2;
+  EntityMetadata metadata = 3;
+}
+
+enum ReadConsistencySpec {
+  READ_CONSISTENCY_UNSPECIFIED = 0;
+  READ_CONSISTENCY_STRONG = 1;
+  READ_CONSISTENCY_EVENTUAL = 2;
+}
+
+message ReadSpec {
+  ReadConsistencySpec read_consistency = 1;
+  google.protobuf.Timestamp read_time = 2;
+}
+
+// PropertyMaskSpec uses message presence so an empty paths list (transform-only
+// update) is distinct from an unset mask (full entity replacement).
+message PropertyMaskSpec {
+  repeated string paths = 1;
+}
+
+enum ServerValueSpec {
+  SERVER_VALUE_UNSPECIFIED = 0;
+  SERVER_VALUE_REQUEST_TIME = 1;
+}
+
+message PropertyTransformSpec {
+  string property = 1;
+  oneof transform_type {
+    ServerValueSpec set_to_server_value = 2;
+    ValueSpec increment = 3;
+    ValueSpec maximum = 4;
+    ValueSpec minimum = 5;
+    ArraySpec append_missing_elements = 6;
+    ArraySpec remove_all_from_array = 7;
+  }
+}
+
+enum MutationOp {
+  MUTATION_OP_UNSPECIFIED = 0;
+  MUTATION_OP_INSERT = 1;
+  MUTATION_OP_UPSERT = 2;
+  MUTATION_OP_UPDATE = 3;
+  MUTATION_OP_DELETE = 4;
+}
+
+message MutationSpec {
+  MutationOp op = 1;
+  EntitySpec entity = 2;
+  KeySpec delete_key = 3;
+  PropertyMaskSpec property_mask = 4;
+  repeated PropertyTransformSpec transforms = 5;
+  optional int64 base_version = 6;
+  google.protobuf.Timestamp update_time = 7;
+}
+
+message MutationResultSpec {
+  KeySpec key = 1;
+  int64 version = 2;
+  google.protobuf.Timestamp create_time = 3;
+  google.protobuf.Timestamp update_time = 4;
+  repeated ValueSpec transform_results = 5;
+}
+
+enum PropertyFilterOp {
+  PROPERTY_FILTER_OP_UNSPECIFIED = 0;
+  PROPERTY_FILTER_OP_LESS_THAN = 1;
+  PROPERTY_FILTER_OP_LESS_THAN_OR_EQUAL = 2;
+  PROPERTY_FILTER_OP_GREATER_THAN = 3;
+  PROPERTY_FILTER_OP_GREATER_THAN_OR_EQUAL = 4;
+  PROPERTY_FILTER_OP_EQUAL = 5;
+  PROPERTY_FILTER_OP_IN = 6;
+  PROPERTY_FILTER_OP_NOT_EQUAL = 7;
+  PROPERTY_FILTER_OP_HAS_ANCESTOR = 8;
+  PROPERTY_FILTER_OP_NOT_IN = 9;
+}
+
+enum CompositeFilterOp {
+  COMPOSITE_FILTER_OP_UNSPECIFIED = 0;
+  COMPOSITE_FILTER_OP_AND = 1;
+  COMPOSITE_FILTER_OP_OR = 2;
+}
+
+message PropertyFilterSpec {
+  string property = 1;
+  PropertyFilterOp op = 2;
+  ValueSpec value = 3;
+}
+
+message CompositeFilterSpec {
+  CompositeFilterOp op = 1;
+  repeated FilterSpec filters = 2;
+}
+
+message FilterSpec {
+  oneof filter_type {
+    PropertyFilterSpec property_filter = 1;
+    CompositeFilterSpec composite_filter = 2;
+  }
+}
+
+enum OrderDirection {
+  ORDER_DIRECTION_UNSPECIFIED = 0;
+  ORDER_DIRECTION_ASCENDING = 1;
+  ORDER_DIRECTION_DESCENDING = 2;
+}
+
+message OrderSpec {
+  string property = 1;
+  OrderDirection direction = 2;
+}
+
+enum DistanceMeasureSpec {
+  DISTANCE_MEASURE_UNSPECIFIED = 0;
+  DISTANCE_MEASURE_EUCLIDEAN = 1;
+  DISTANCE_MEASURE_COSINE = 2;
+  DISTANCE_MEASURE_DOT_PRODUCT = 3;
+}
+
+message FindNearestSpec {
+  string vector_property = 1;
+  VectorSpec query_vector = 2;
+  DistanceMeasureSpec distance_measure = 3;
+  optional int32 limit = 4;
+  string distance_result_property = 5;
+  optional double distance_threshold = 6;
+}
+
+message StructuredQuerySpec {
+  string kind = 1;
+  KeySpec ancestor_key = 2;
+  FilterSpec filter = 3;
+  repeated string projections = 4;
+  bool keys_only = 5;
+  bool distinct = 6;
+  repeated string distinct_on = 7;
+  repeated OrderSpec orders = 8;
+  optional int32 limit = 9;
+  optional int32 offset = 10;
+  bytes start_cursor = 11;
+  bytes end_cursor = 12;
+  FindNearestSpec find_nearest = 13;
+}
+
+message GqlBindingSpec {
+  oneof binding_type {
+    ValueSpec value = 1;
+    bytes cursor = 2;
+  }
+}
+
+message GqlQuerySpec {
+  string query_string = 1;
+  bool allow_literals = 2;
+  map<string, GqlBindingSpec> named_bindings = 3;
+  repeated GqlBindingSpec positional_bindings = 4;
+}
+
+enum AggregationOp {
+  AGGREGATION_OP_UNSPECIFIED = 0;
+  AGGREGATION_OP_COUNT = 1;
+  AGGREGATION_OP_SUM = 2;
+  AGGREGATION_OP_AVG = 3;
+}
+
+message AggregationSpec {
+  AggregationOp op = 1;
+  string alias = 2;
+  string property = 3;
+  optional int64 up_to = 4;
+}
+
+message ExplainOptionsSpec {
+  bool analyze = 1;
+}
+
+message PlanSummaryView {
+  repeated google.protobuf.Struct indexes_used = 1;
+}
+
+message ExecutionStatsView {
+  int64 results_returned = 1;
+  google.protobuf.Duration execution_duration = 2;
+  int64 read_operations = 3;
+  google.protobuf.Struct debug_stats = 4;
+}
+
+message ExplainMetricsView {
+  PlanSummaryView plan_summary = 1;
+  ExecutionStatsView execution_stats = 2;
+}
+
+message CreateClientRequest {
+  string project_id = 1;
+  string database_id = 2;
+  string namespace_id = 3;
+  // Endpoint of the simulated server in host:port form.
+  string endpoint = 4;
+  Transport transport = 5;
+}
+
+message CreateClientResponse {
+  string client_id = 1;
+  VeneerError error = 2;
+}
+
+message CloseClientRequest {
+  string client_id = 1;
+}
+
+message CloseClientResponse {}
+
+message AllocateIdsFixtureRequest {
+  string client_id = 1;
+  repeated KeySpec incomplete_keys = 2;
+}
+
+message AllocateIdsFixtureResponse {
+  repeated KeySpec allocated_keys = 1;
+  VeneerError error = 2;
+}
+
+message ReserveIdsFixtureRequest {
+  string client_id = 1;
+  repeated KeySpec keys = 2;
+  // When sequential_count > 0, invoke the veneer's sequential ID reservation helper.
+  KeySpec sequential_start_key = 3;
+  int64 sequential_count = 4;
+}
+
+message ReserveIdsFixtureResponse {
+  VeneerError error = 1;
+}
+
+message GetFixtureRequest {
+  string client_id = 1;
+  KeySpec key = 2;
+  ReadSpec read_spec = 3;
+  PropertyMaskSpec property_mask = 4;
+}
+
+message GetFixtureResponse {
+  FoundEntity result = 1;
+  VeneerError error = 2;
+}
+
+message GetMultiFixtureRequest {
+  string client_id = 1;
+  repeated KeySpec keys = 2;
+  ReadSpec read_spec = 3;
+  PropertyMaskSpec property_mask = 4;
+}
+
+message GetMultiFixtureResponse {
+  repeated FoundEntity results = 1;
+  VeneerError error = 2;
+}
+
+message PutFixtureRequest {
+  string client_id = 1;
+  EntitySpec entity = 2;
+  repeated PropertyTransformSpec transforms = 3;
+}
+
+message PutFixtureResponse {
+  KeySpec key = 1;
+  VeneerError error = 2;
+}
+
+message InsertFixtureRequest {
+  string client_id = 1;
+  EntitySpec entity = 2;
+}
+
+message InsertFixtureResponse {
+  KeySpec key = 1;
+  VeneerError error = 2;
+}
+
+message UpdateFixtureRequest {
+  string client_id = 1;
+  EntitySpec entity = 2;
+}
+
+message UpdateFixtureResponse {
+  VeneerError error = 1;
+}
+
+message DeleteFixtureRequest {
+  string client_id = 1;
+  repeated KeySpec keys = 2;
+  // When true (or when len(keys) > 1), invoke batch DeleteMulti if distinct from Delete.
+  bool batch = 3;
+}
+
+message DeleteFixtureResponse {
+  VeneerError error = 1;
+}
+
+message MutateFixtureRequest {
+  string client_id = 1;
+  repeated MutationSpec mutations = 2;
+}
+
+message MutateFixtureResponse {
+  repeated MutationResultSpec results = 1;
+  VeneerError error = 2;
+}
+
+message RunQueryFixtureRequest {
+  string client_id = 1;
+  string namespace_id = 2;
+  oneof query_spec {
+    StructuredQuerySpec structured_query = 3;
+    GqlQuerySpec gql_query = 4;
+  }
+  ReadSpec read_spec = 5;
+  PropertyMaskSpec property_mask = 6;
+  ExplainOptionsSpec explain_options = 7;
+  // If > 0, stop iterating after N entities and capture the iterator's cursor.
+  int32 stop_after_items = 8;
+  // If true, inspect explain_metrics before iterator exhaustion and return any error.
+  bool check_explain_before_done = 9;
+  // If true, pass decoded result entities back through Put on the same client.
+  bool round_trip_upsert_results = 10;
+}
+
+message RunQueryFixtureResponse {
+  repeated KeySpec keys = 1;
+  repeated EntitySpec entities = 2;
+  bytes cursor = 3;
+  ExplainMetricsView explain_metrics = 4;
+  VeneerError error = 5;
+}
+
+message RunAggregationQueryFixtureRequest {
+  string client_id = 1;
+  string namespace_id = 2;
+  oneof base_query {
+    StructuredQuerySpec structured_query = 3;
+    GqlQuerySpec gql_query = 4;
+  }
+  repeated AggregationSpec aggregations = 5;
+  ReadSpec read_spec = 6;
+  ExplainOptionsSpec explain_options = 7;
+}
+
+message RunAggregationQueryFixtureResponse {
+  map<string, ValueSpec> results = 1;
+  ExplainMetricsView explain_metrics = 2;
+  VeneerError error = 3;
+}
+
+message TxGetStep {
+  KeySpec key = 1;
+  PropertyMaskSpec property_mask = 2;
+}
+
+message TxGetMultiStep {
+  repeated KeySpec keys = 1;
+  PropertyMaskSpec property_mask = 2;
+}
+
+message TxRunQueryStep {
+  oneof query_spec {
+    StructuredQuerySpec structured_query = 1;
+    GqlQuerySpec gql_query = 2;
+  }
+  string namespace_id = 3;
+  PropertyMaskSpec property_mask = 4;
+  ExplainOptionsSpec explain_options = 5;
+  int32 stop_after_items = 6;
+}
+
+message TxRunAggregationQueryStep {
+  oneof base_query {
+    StructuredQuerySpec structured_query = 1;
+    GqlQuerySpec gql_query = 2;
+  }
+  string namespace_id = 3;
+  repeated AggregationSpec aggregations = 4;
+  ExplainOptionsSpec explain_options = 5;
+}
+
+message TxMutateStep {
+  repeated MutationSpec mutations = 1;
+  // Optional IDs paired index-for-index with mutations to expose resolved keys after Commit.
+  repeated string pending_key_ids = 2;
+  // When true, use transaction Put/Delete helpers instead of Mutate where applicable.
+  bool use_convenience_methods = 3;
+}
+
+message TxParallelReadsStep {
+  repeated KeySpec keys = 1;
+}
+
+message TxFailStep {
+  string message = 1;
+}
+
+message TransactionStep {
+  oneof step {
+    TxGetStep get = 1;
+    TxGetMultiStep get_multi = 2;
+    TxRunQueryStep run_query = 3;
+    TxRunAggregationQueryStep run_aggregation_query = 4;
+    TxMutateStep mutate = 5;
+    TxParallelReadsStep parallel_reads = 6;
+    TxFailStep fail_callback = 7;
+  }
+}
+
+message TxParallelReadsResult {
+  repeated FoundEntity results = 1;
+}
+
+message TransactionStepResult {
+  oneof result {
+    FoundEntity get_result = 1;
+    GetMultiFixtureResponse get_multi_result = 2;
+    RunQueryFixtureResponse run_query_result = 3;
+    RunAggregationQueryFixtureResponse run_aggregation_query_result = 4;
+    TxParallelReadsResult parallel_reads_result = 5;
+  }
+}
+
+message RunInTransactionFixtureRequest {
+  string client_id = 1;
+  bool read_only = 2;
+  google.protobuf.Timestamp read_time = 3;
+  int32 max_attempts = 4;
+  bool begin_later = 5;
+  repeated TransactionStep steps = 6;
+}
+
+message RunInTransactionFixtureResponse {
+  int32 callback_attempts = 1;
+  repeated TransactionStepResult step_results = 2;
+  map<string, KeySpec> resolved_pending_keys = 3;
+  VeneerError error = 4;
+}

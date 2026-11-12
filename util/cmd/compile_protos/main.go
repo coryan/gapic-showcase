@@ -15,6 +15,8 @@
 package main
 
 import (
+	"flag"
+
 	"github.com/googleapis/gapic-showcase/util"
 )
 
@@ -28,5 +30,12 @@ import (
 //
 // Usage: go run ./util/cmd/compile_protos/main.go
 func main() {
+	conformanceOnly := flag.Bool("conformance-only", false, "regenerate only standalone conformance protos")
+	flag.Parse()
+
+	if *conformanceOnly {
+		util.CompileConformanceProtos()
+		return
+	}
 	util.CompileProtos("v1beta1")
 }
