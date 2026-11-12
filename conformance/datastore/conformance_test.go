@@ -34,6 +34,7 @@ var knownGoDivergences = []string{
 	"QueryProjectionKeylessEntity",
 	"RetryNoRetryBeginTransactionDeadlineExceeded",
 	"TxBeginLaterParallelReadsSerialized",
+	"TxReadOnlyRejectsWrite",
 	// knownGoDivergencesEnd
 }
 

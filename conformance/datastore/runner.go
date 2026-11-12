@@ -121,6 +121,7 @@ func AllScenarios() []Scenario {
 	all = append(all, retryScenarios()...)
 	all = append(all, txLifecycleScenarios()...)
 	all = append(all, txCommitRollbackScenarios()...)
+	all = append(all, txReadOnlyRetryScenarios()...)
 	return all
 }
 
