@@ -18,10 +18,12 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"net/http"
 	"sync"
 
 	pb "cloud.google.com/go/datastore/apiv1/datastorepb"
 	"github.com/googleapis/gapic-showcase/conformance/datastore/v1/fixturepb"
+	"github.com/soheilhy/cmux"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
@@ -53,7 +55,9 @@ type SimServer struct {
 	pb.UnimplementedDatastoreServer
 
 	lis        net.Listener
+	mux        cmux.CMux
 	grpcServer *grpc.Server
+	httpServer *http.Server
 	wg         sync.WaitGroup
 
 	mu                              sync.Mutex
@@ -66,7 +70,7 @@ type SimServer struct {
 	implicitRollbackValidator       func(req *pb.RollbackRequest, md metadata.MD, transport fixturepb.Transport) error
 }
 
-// NewSimServer creates and starts a simulated Datastore server on 127.0.0.1:0.
+// NewSimServer creates and starts a dual-transport simulated Datastore server on 127.0.0.1:0.
 func NewSimServer() (*SimServer, error) {
 	lis, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
@@ -78,13 +82,29 @@ func NewSimServer() (*SimServer, error) {
 		allowImplicitRollbackAfterAbort: true,
 	}
 
+	s.mux = cmux.New(lis)
+	httpLis := s.mux.Match(cmux.HTTP1())
+	grpcLis := s.mux.Match(cmux.HTTP2(), cmux.Any())
+
 	s.grpcServer = grpc.NewServer()
 	pb.RegisterDatastoreServer(s.grpcServer, s)
 
-	s.wg.Add(1)
+	s.httpServer = &http.Server{
+		Handler: http.HandlerFunc(s.serveHTTP),
+	}
+
+	s.wg.Add(3)
 	go func() {
 		defer s.wg.Done()
-		_ = s.grpcServer.Serve(lis)
+		_ = s.grpcServer.Serve(grpcLis)
+	}()
+	go func() {
+		defer s.wg.Done()
+		_ = s.httpServer.Serve(httpLis)
+	}()
+	go func() {
+		defer s.wg.Done()
+		_ = s.mux.Serve()
 	}()
 
 	return s, nil
@@ -98,6 +118,8 @@ func (s *SimServer) Addr() string {
 // Close shuts down the simulated server and waits for serving goroutines to exit.
 func (s *SimServer) Close() error {
 	s.grpcServer.Stop()
+	_ = s.httpServer.Close()
+	s.mux.Close()
 	err := s.lis.Close()
 	s.wg.Wait()
 	return err
