@@ -31,6 +31,7 @@ import (
 var knownGoDivergences = []string{
 	"LookupExposesEntityMetadata",
 	"MutationExposesMutationResultMetadata",
+	"QueryProjectionKeylessEntity",
 	// knownGoDivergencesEnd
 }
 
