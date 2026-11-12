@@ -113,6 +113,7 @@ func AllScenarios() []Scenario {
 	all = append(all, lookupOptionScenarios()...)
 	all = append(all, mutationBasicScenarios()...)
 	all = append(all, mutationAdvancedScenarios()...)
+	all = append(all, queryFilterScenarios()...)
 	return all
 }
 
