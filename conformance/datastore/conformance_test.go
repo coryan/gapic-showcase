@@ -35,6 +35,7 @@ var knownGoDivergences = []string{
 	"RetryNoRetryBeginTransactionDeadlineExceeded",
 	"TxBeginLaterParallelReadsSerialized",
 	"TxReadOnlyRejectsWrite",
+	"ValueRejectDirectlyNestedArray",
 	// knownGoDivergencesEnd
 }
 
