@@ -107,6 +107,7 @@ type SuiteConfig struct {
 func AllScenarios() []Scenario {
 	var all []Scenario
 	all = append(all, headerRoutingScenarios()...)
+	all = append(all, headerNamespaceScenarios()...)
 	return all
 }
 
