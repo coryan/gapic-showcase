@@ -108,6 +108,7 @@ func AllScenarios() []Scenario {
 	var all []Scenario
 	all = append(all, headerRoutingScenarios()...)
 	all = append(all, headerNamespaceScenarios()...)
+	all = append(all, keyIDScenarios()...)
 	return all
 }
 
