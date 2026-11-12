@@ -85,7 +85,9 @@ jobs:
           TARGET_ARCH: ${{ matrix.osarch.arch }}
         run: |
           gox -osarch "${TARGET_OS}/${TARGET_ARCH}" -output gapic-showcase ./cmd/gapic-showcase && \
-          tar cvfz gapic-showcase.tar.gz gapic-showcase*
+          tar cvfz gapic-showcase.tar.gz gapic-showcase* && \
+          gox -osarch "${TARGET_OS}/${TARGET_ARCH}" -output veneer-conformance ./cmd/veneer-conformance && \
+          tar cvfz veneer-conformance.tar.gz veneer-conformance*
       - name: Upload the ${{ matrix.osarch.os }}/${{ matrix.osarch.arch }} release.
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -96,6 +98,9 @@ jobs:
           ASSET_NAME="gapic-showcase-${RAW_VERSION}-${TARGET_OS}-${TARGET_ARCH}.tar.gz"
           mv gapic-showcase.tar.gz "${ASSET_NAME}"
           gh release upload "$TAG_NAME" "${ASSET_NAME}" --clobber
+          CONFORMANCE_ASSET_NAME="veneer-conformance-${RAW_VERSION}-${TARGET_OS}-${TARGET_ARCH}.tar.gz"
+          mv veneer-conformance.tar.gz "${CONFORMANCE_ASSET_NAME}"
+          gh release upload "$TAG_NAME" "${CONFORMANCE_ASSET_NAME}" --clobber
   # Note: Disabled until better solution for storing the GCR key is found.
   # push_to_registry:
   #   needs:
